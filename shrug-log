@@ -1,0 +1,30 @@
+#!/bin/dash
+
+################ ERROR CASES ##############
+# no .shrug
+if test ! -d ".shrug"
+then
+    echo "shrug-log: error: no .shrug directory containing shrug repository exists" >&2
+    exit 1
+fi
+
+# test is commit_log doesn't exist or doesnt have contents
+if test ! -s ".shrug/.commit_log.txt"
+then
+    echo "shrug-log: error: your repository does not have any commits yet" >&2
+    exit 1
+fi
+
+# test if arguments given
+if test "$1"
+then
+    echo "usage: shrug-log" >&2
+    exit 1
+fi
+
+############## PRINT COMMIT LOG ###############
+# print contents of commit log (backwards)
+tac ".shrug/.commit_log.txt"
+
+exit 0
+

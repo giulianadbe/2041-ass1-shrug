@@ -1,0 +1,140 @@
+#!/bin/dash
+
+################ ERROR CASES ##############
+# no .shrug
+if test ! -d ".shrug"
+then
+    echo "shrug-add: error: no .shrug directory containing shrug repository exists" >&2
+    exit 1
+fi
+
+# incorrect number of command line args
+if test $# -eq 0 -o $# -gt 3
+then
+    echo "usage: shrug-commit [-a] -m commit-message" >&2
+    exit 1
+fi
+
+# process command-line args and extract message
+first_arg=$1
+# if -a 
+if test $first_arg = "-a"
+then
+    # next should be -m, otherwise usage error
+    if test $2 = "-m"
+    then
+        message="$3"
+        # check if message only one word
+        if test $(echo "$4" | wc -w) -ne 0
+        then
+            echo "usage: shrug-commit [-a] -m commit-message" >&2
+            exit 1
+        fi
+    else
+        echo "usage: shrug-commit [-a] -m commit-message" >&2
+        exit 1
+    fi
+
+    # add cwd files to index (as specified by -a command)
+    for file in ".shrug/index/*"
+    do
+        filename=$(basename $file)
+        output=$(shrug-add "$filename")
+    done
+
+# if first arg is -m
+elif test $first_arg = "-m"
+then
+    # message must follow -m
+    if test $(echo "$2" | wc -w) -ne 0
+    then
+        message="$2"
+    else
+        echo "usage: shrug-commit [-a] -m commit-message" >&2
+        exit 1
+    fi
+
+    # check if message only one word
+    if test $(echo "$3" | wc -w) -ne 0
+    then
+        # if -a after -m, print usage error
+        if test "$3" != "-a"
+        then
+            echo "usage: shrug-commit [-a] -m commit-message" >&2
+            exit 1
+        fi
+    fi
+else
+    # anything other than -a ... -m ... is invalid, usage error
+    echo "usage: shrug-commit [-a] -m commit-message" >&2
+    exit 1
+fi
+
+# contains a newline
+if test $(echo "$message" | wc -l) -gt 1
+then
+    echo "shrug-commit: error: commit message cannot contain a newline" >&2
+    exit 1
+fi
+
+# check if message does not start with - (user tries using options other than -a, -m)
+if test $(echo "$message" | egrep '^-')
+then
+    echo "usage: shrug-commit [-a] -m commit-message" >&2
+    exit 1
+fi
+
+############ COMMIT FILES TO REPO ##############
+
+# find next commit directory
+i=0
+commitdir=commit.$i
+while test -e ".shrug/$commitdir"
+do
+    i=$((i + 1))
+    commitdir=commit.$i
+done
+
+# get last commit
+i=$((i - 1))
+lastcommit=commit.$i
+i=$((i + 1))
+
+# check if last commit exists
+# then check if stage same as last commit
+if test -d ".shrug/$lastcommit"
+then
+    diff=$(diff --exclude=".*" ".shrug/$lastcommit" ".shrug/index")
+    if test ! "$diff"
+    then
+        echo "nothing to commit"
+        exit 0
+    fi
+else
+    # check if there are no files in index
+    # and no previous commit
+    if test $(find ".shrug/index" -type d -empty)
+    then
+        echo "nothing to commit"
+        exit 0
+    fi
+fi
+
+# copy files from stage into commitdir
+mkdir -p ".shrug/$commitdir"
+
+if test ! $(find ".shrug/index" -type d -empty)
+then
+    for file in ".shrug/index/*"
+    do
+        cp $file ".shrug/$commitdir"
+    done
+fi
+
+# add message to message log
+echo $i $message >> ".shrug/.commit_log.txt"
+
+# print success message
+echo "Committed as commit $i"
+
+exit 0

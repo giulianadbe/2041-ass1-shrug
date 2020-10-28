@@ -1,0 +1,238 @@
+#!/bin/dash
+
+################ ERROR CASES ##############
+# no .shrug
+if test ! -d ".shrug"
+then
+    echo "shrug-status: error: no .shrug directory containing shrug repository exists" >&2
+    exit 1
+fi
+
+# test if commit_log doesn't exist or doesnt have contents (no commits)
+if test ! -s ".shrug/.commit_log.txt"
+then
+    echo "shrug-status: error: your repository does not have any commits yet" >&2
+    exit 1
+fi
+
+################## COMMENT KEY #####################
+# - & means files are the same between locations
+# - vs means files are different between locations
+# - ~ means not present in location
+# - index is the stage
+# - repo is the last commit
+# - cwd is the current working directory of file
+# note: each check firstly ensures files exist in respective locations, then computes diff
+
+# get last commit
+i=0
+commitdir=commit.$i
+while test -e ".shrug/$commitdir"
+do
+    i=$((i + 1))
+    commitdir=commit.$i
+done
+i=$((i - 1))
+lastcommit=commit.$i
+
+## PATHS ##
+index=.shrug/index
+repo=.shrug/$lastcommit
+
+################ FILE IN ALL 3 PATHS #################
+# index & repo vs cwd
+for file in *
+do
+    if test -f "$index/"$file"" 
+    then
+        diff=$(diff "./"$file"" "$index/"$file"")
+        if test "$diff"
+        then
+            if test -f "$repo/"$file""
+            then
+                diff=$(diff "$index/"$file"" "$repo/"$file"")
+                if test ! "$diff"
+                then
+                    echo ""$file" - file changed, changes not staged for commit" >> ".shrug/.status.txt"
+                fi
+            fi
+        fi
+    fi
+done
+
+# cwd vs index vs repo
+for file in *
+do
+    if test -f $index/"$file" 
+    then
+        diff=$(diff "./"$file"" "$index/"$file"")
+        if test "$diff"
+        then
+            if test -f "$repo/"$file""
+            then
+                diff=$(diff "$index/"$file"" "$repo/"$file"")
+                if test "$diff"
+                then
+                    echo ""$file" - file changed, different changes staged for commit" >> ".shrug/.status.txt"
+                fi
+            fi
+        fi
+    fi
+done
+
+# cwd & index & repo
+for file in *
+do
+    if test -f "$index/"$file"" 
+    then
+        diff=$(diff "./"$file"" "$index/"$file"")
+        if test ! "$diff"
+        then
+            if test -f "$repo/"$file""
+            then
+                diff=$(diff "$index/"$file"" "$repo/"$file"")
+                if test ! "$diff"
+                then
+                    echo ""$file" - same as repo" >> ".shrug/.status.txt"
+                fi
+            fi
+        fi
+    fi
+done
+
+# cwd & index vs repo
+for file in *
+do
+    if test -f "$index/"$file"" 
+    then
+        diff=$(diff "./"$file"" "$index/"$file"")
+        if test ! "$diff"
+        then
+            if test -f "$repo/"$file""
+            then
+                diff=$(diff "./"$file"" "$repo/"$file"")
+                if test "$diff"
+                then
+                    echo ""$file" - file changed, changes staged for commit" >> ".shrug/.status.txt"
+                fi
+            fi
+        fi
+    fi
+done
+
+############### INDEX ONLY CASES ################
+# cwd & index ~ repo
+for file in *
+do
+    if test -f "$index/"$file"" 
+    then
+        if test ! -f "$repo/"$file""
+        then
+            diff=$(diff "./"$file"" "$index/"$file"")
+            if test ! "$diff"
+            then
+                echo ""$file" - added to index" >> ".shrug/.status.txt"
+            fi
+        fi
+    fi
+done
+
+# cwd vs index ~ repo
+for file in *
+do
+    if test -f "$index/"$file"" 
+    then
+        if test ! -f "$repo/"$file""
+        then
+            diff=$(diff "./"$file"" "$index/"$file"")
+            if test "$diff"
+            then
+                echo ""$file" - added to index, file changed" >> ".shrug/.status.txt"
+            fi
+        fi
+    fi
+done
+
+############### DELETED CASES #################
+# index vs repo ~ cwd
+for file in $(find ".shrug/index" -type f -print)
+do
+    filename=$(echo "$file" | sed 's/\.shrug\/index\///')
+    if test ! -f "./"$filename""
+    then
+        if test -f "$repo/"$filename""
+        then
+            diff=$(diff "$repo/"$filename"" "$index/"$filename"")
+            if test "$diff"
+            then
+                echo ""$filename" - file deleted, different changes staged for commit" >> ".shrug/.status.txt"
+            fi
+        fi
+    fi
+done
+
+# index & repo ~ cwd
+for file in $(find ".shrug/index" -type f -print)
+do
+    filename=$(echo "$file" | sed 's/\.shrug\/index\///')
+    if test ! -f ./"$filename"
+    then
+        if test -f $repo/"$filename"
+        then
+            diff=$(diff "$repo/"$filename"" "$index/"$filename"")
+            if test ! "$diff"
+            then
+                echo ""$filename" - file deleted" >> ".shrug/.status.txt"
+            fi
+        fi
+    fi
+done
+
+# index ~ cwd ~ repo
+for file in $(find ".shrug/index" -type f -print)
+do
+    filename=$(echo "$file" | sed 's/\.shrug\/index\///')
+    if test ! -f ./"$filename"
+    then
+        if test ! -f "$repo/"$filename""
+        then
+            echo ""$filename" - added to index, file deleted" >> ".shrug/.status.txt"
+        fi
+    fi
+done
+
+# repo ~ cwd ~ index
+for file in $(find ".shrug/$lastcommit" -type f -print)
+do
+    filename=$(echo "$file" | sed "s/\.shrug\/$lastcommit\///")
+    if test ! -f ./"$filename"
+    then
+        if test ! -f "$index/"$filename""
+        then
+            echo ""$filename" - deleted" >> ".shrug/.status.txt"
+        fi
+    fi
+done
+
+############## FILE UNTRACKED ###############
+# cwd ~ index ~ repo
+for file in *
+do
+    if test -f "$file"
+    then
+        if test ! -f "$index"/"$file"
+        then
+            echo ""$file" - untracked" >> ".shrug/.status.txt"
+        fi
+    fi
+done
+
+############## GET STATUS ##############
+
+# sort into alphabetical order and cat to output
+sort .shrug/.status.txt
+
+# clear file for next call
+> .shrug/.status.txt
+
+exit 0

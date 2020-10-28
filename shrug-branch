@@ -1,0 +1,119 @@
+#!/bin/dash
+
+################ ERROR CASES ##############
+# no .shrug
+if test ! -d ".shrug"
+then
+    echo "shrug-branch: error: no .shrug directory containing shrug repository exists" >&2
+    exit 1
+fi
+
+# test if commit_log doesn't exist or doesnt have contents (no commits)
+if test ! -s ".shrug/.commit_log.txt"
+then
+    echo "shrug-branch: error: your repository does not have any commits yet" >&2
+    exit 1
+fi
+
+######### BRANCH CREATION ########
+
+# get last commit
+i=0
+commitdir=commit.$i
+while test -e ".shrug/$commitdir"
+do
+    i=$((i + 1))
+    commitdir=commit.$i
+done
+i=$((i - 1))
+lastcommit=commit.$i
+
+## PATHS ##
+index=.shrug/index
+repo=.shrug/$lastcommit
+
+# note: creation of .branches.txt file in shrug-init stores names of all branches
+
+# create master branch if not already created
+if test ! -h $repo/master
+then
+    ln -s $repo/"master" $repo/"master"
+    echo "master" >> .shrug/.branches.txt
+fi
+
+# no command args
+if test -z "$1"
+then
+    # print contents of branch file, in alphabetical order
+    sort .shrug/.branches.txt
+    exit 0
+fi
+
+# check if delete specified
+if test "$1" = "-d"
+then
+    branch="$2"
+    # print usage error if 2nd option specified
+    if test $(echo "$branch" | egrep '^-')
+    then
+        echo "usage: shrug-branch [-d] <branch>" >&2
+        exit 1
+    fi
+
+    # if additional command arguments, usage error
+    if test "$3"
+    then
+        echo "usage: shrug-branch [-d] <branch>" >&2
+        exit 1
+    fi
+
+    # if the branch doesnt exist, print error
+    if test -h $repo/"$branch"
+    then
+        # if the branch isnt the master
+        if test "$branch" = "master"
+        then
+            echo "shrug-branch: error: can not delete branch 'master'" >&2
+            exit 1
+        else
+            # delete branch (and remove the line '$branch' from txt file)
+            $(grep -v "^$branch$" .shrug/.branches.txt > temp | mv temp .shrug/.branches.txt)
+            rm -rf $repo/"$branch"
+            echo "Deleted branch '$branch'"
+            exit 0
+        fi
+    else
+        echo "shrug-branch: error: branch '"$branch"' does not exist" >&2
+        exit 1
+    fi
+fi
+
+branch="$1"
+
+# only one branch can be specified
+if test "$2"
+then
+    echo "usage: shrug-branch [-d] <branch>" >&2
+    exit 1
+fi
+
+# if the branch is master, do not create
+if test "$branch" = "master"
+then
+    echo "shrug-branch: error: branch 'master' already exists" >&2
+    exit 1
+fi
+
+# if the branch doesn't exist, create it, else error message
+if test ! -h $repo/"$branch"
+then
+    # echo $lastcommit > $repo/"$branch"
+    ln -sf $repo/"$branch" "$repo"/$branch 
+    echo "$branch" >> .shrug/.branches.txt
+    exit 0
+else
+    echo "shrug-branch: error: branch '"$branch"' already exists" >&2
+    exit 1
+fi
+
+exit 0

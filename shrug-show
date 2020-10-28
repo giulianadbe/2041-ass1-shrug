@@ -1,0 +1,92 @@
+#!/bin/dash
+
+################ ERROR CASES ##############
+# no .shrug
+if test ! -d ".shrug"
+then
+    echo "shrug-show: error: no .shrug directory containing shrug repository exists" >&2
+    exit 1
+fi
+
+#process command line arguments
+
+# test if no command line arg
+if test -z $1
+then
+    echo "usage: shrug-show <commit>:<filename>" >&2
+    exit 1
+fi
+
+# correct format...
+# extract commit number and filename
+commit=$(echo $1 | cut -f1 -d':')
+file=$(echo $1 | cut -f2 -d':')
+
+# check if arg doesn't have : in it
+if test ! $(echo "$1" | egrep ':')
+then
+    echo "shrug-show: error: invalid object "$1"" >&2
+    exit 1
+fi
+
+# test if command line arg fits num:file
+# if file and commit isnt ''
+# and they both aren't valid entries, usage error  
+    # handles cases like -invalid:-invalid
+if test ! -z "$file"
+then
+    if test ! $(echo "$file" | egrep '^[0-9a-zA-Z]+[0-9a-zA-Z.-_]*$')
+    then
+        if test ! -d ".shrug/commit."$commit""
+        then
+            if test ! -z "$commit" -a ! $(echo "$commit" | egrep '[0-9]+')
+            then
+                echo "usage: shrug-show <commit>:<filename>" >&2
+                exit 1
+            fi
+        fi
+    fi
+fi
+
+# test if commit exists, but isn't '' (special meaning)
+if test ! -d ".shrug/commit."$commit""
+then
+    if test ! -z "$commit"
+    then
+        echo "shrug-show: error: unknown commit '"$commit"'" >&2
+        exit 1
+    fi
+fi
+
+# test if valid file name
+if test ! $(echo "$file" | egrep '^[0-9a-zA-Z]+[0-9a-zA-Z.-_]*')
+then
+    echo "shrug-show: error: invalid filename '"$file"'" >&2
+    exit 1
+fi
+
+############### SHOW CONTENTS ##############
+# test if commit '', then show file in index, if they exist there
+if test ! -n "$commit"
+then
+    if test ! -f ".shrug/index/"$file""
+    then
+        echo "shrug-show: error: '"$file"' not found in index" >&2
+        exit 1  
+    else
+        cat ".shrug/index/"$file""
+        exit 0
+    fi
+fi
+
+# check if file in commit, show the file
+if test ! -f ".shrug/commit."$commit"/"$file""
+then
+    echo "shrug-show: error: '"$file"' not found in commit "$commit"" >&2
+    exit 1
+else
+    cat ".shrug/commit.$commit/"$file""
+    exit 0
+fi
+
+exit 0

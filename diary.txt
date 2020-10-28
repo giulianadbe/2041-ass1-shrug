@@ -1,0 +1,20 @@
+Date        Start       Stop        Activity                Comments
+05/07/20    3:00pm      4:00pm      Read spec               Understand what git is and what the task requires
+05/07/20    4:00pm      4:30pm      coding                  Code shrug-init, understand how autotests work, and reference implementation
+05/07/20    4:30pm      5:00pm      coding                  Code shrug-add, inclusion of some error cases from autotests
+06/07/20    3:00pm      5:00pm      coding + debugging      Add edge cases for shrug-add and debug these
+06/07/20    8:30pm      10:30pm     coding + debugging      Code shrug-commit, inclusion of some error cases from autotests
+07/07/20    00:00am     1:00am      debugging + testing     Checked my shrug-commit against reference implementation, added edge cases
+07/07/20    11:00am     12:00am     coding + debugging      Code shrug-log, check edge cases and debug
+07/07/20    12:00pm     1:00pm      coding + debugging      Code shrug-show, check edge cases and debug
+07/07/20    7:00pm      8:00pm      debugging               Debugging shrug-commit message parsing
+08/07/20    8:00pm      10:00pm     read spec + coding      Coding of shrug-commit -a function and shrug-rm, reading and implementing first part of substet 1
+08/07/20    10:00pm     00:00am     debugging               Debugging of shrug-rm to match reference implementation, read about git rm on https://www.atlassian.com/git/tutorials/undoing-changes/git-rm 
+09/07/20    2:00pm      6:00pm      debugging               Debugging major issues with shrug-rm, both syntax and logical
+10/07/20    11:00am     12:00pm     debugging               Fix Shrug-rm and passing all autotests for in
+14/07/20    11:00am     3:00pm      Coding + debugging      Wrote pseudocode and test cases for shrug-status, implemented code and debugged to pass autotests
+14/07/20    6:00pm      9:00pm      Test cases              Wrote test cases 1-4 covering subset 0 commands, fixing bugs I discover along the way
+14/07/20    9:00pm      12:00am     Testing + debugging     Redesign style of test cases for readability, also fixed bugs in my code I found while testing other cases
+15/07/20    1:00pm      6:00pm      Testing + debugging     Test cases 5-10 completed and changes made to code to suit these
+15/07/20    6:00pm      9:00pm      Style + editing         Check style of every file, ensure comments are descriptive and no typos to ensure readability
+15/07/20    9:00pm      10:00pm     Coding + submission     Code branch (decided to give it a go last minute), double check everything, submit assignment

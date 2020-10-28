@@ -1,0 +1,56 @@
+#!/bin/dash
+
+################ ERROR CASES ##############
+# no .shrug
+if test ! -d ".shrug"
+then
+    echo "shrug-add: error: no .shrug directory containing shrug repository exists" >&2
+    exit 1
+fi
+
+# no command args
+if test -z "$1"
+then
+    echo "usage: shrug-add <filenames>" >&2
+    exit 1
+fi
+
+# check valid file
+for file in "$@"
+do
+    # check if attempt at options
+    if test $(echo "$file" | egrep '^-')
+    then
+        echo "usage: shrug-add <filenames>" >&2
+        exit 1
+    fi
+
+    # check if a valid filename according to spec, and if file is a real file in index
+    if test $(echo "$file" | egrep '^[0-9a-zA-Z]+[0-9a-zA-Z.-_]*$')
+    then
+        if test ! -f "$file" -a ! -f ".shrug/index/"$file""
+        then
+            echo "shrug-add: error: can not open '"$file"'" >&2
+            exit 1
+        fi
+    else
+        echo "shrug-add: error: invalid filename '"$file"'" >&2
+        exit 1
+    fi
+
+done
+
+############## ADD TO INDEX ##############
+# if file doesnt exist and is in index, remove from index
+# else copy to index
+for file in "$@"
+do
+    if test ! -f "$file" -a -f ".shrug/index/"$file""
+    then
+        `rm .shrug/index/"$file"`
+    else
+        cp "$file" ".shrug/index/"$file""
+    fi
+done
+
+exit 0

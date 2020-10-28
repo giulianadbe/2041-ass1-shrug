@@ -1,0 +1,208 @@
+#!/bin/dash
+
+################ ERROR CASES ##############
+# no .shrug
+if test ! -d ".shrug"
+then
+    echo "shrug-rm: error: no .shrug directory containing shrug repository exists" >&2
+    exit 1
+fi
+
+# test if commit_log doesn't exist or doesnt have contents (no commits)
+if test ! -s ".shrug/.commit_log.txt"
+then
+    echo "shrug-rm: error: your repository does not have any commits yet" >&2
+    exit 1
+fi
+
+# test if no command line args
+if test $# -eq 0
+then
+    echo "usage: shrug-rm [--force] [--cached] <filenames>" >&2
+    exit 1
+fi
+
+# test if first arguments are --force or --cached
+# shift arguments out if so
+force=0
+cached=0
+if test "$1" = "--force"
+then
+    force=1
+    shift
+    if test "$1" = "--cached"
+    then
+        cached=1
+        shift
+    fi
+elif test "$1" = "--cached"
+then
+    cached=1
+    shift
+fi
+
+# test if any of files are invalid, or other options attempted as args
+for file in "$@"
+do
+    if test $(echo "$file" | egrep '^[0-9a-zA-Z]+[0-9a-zA-Z.-_]*$')
+    then
+        continue
+    else
+        if test $(echo "$file" | egrep '^-')
+        then
+            echo "usage: shrug-rm [--force] [--cached] <filenames>" >&2
+            exit 1
+        else
+            echo "shrug-rm: error: invalid filename '"$file"'" >&2
+            exit 1
+        fi
+    fi
+done
+
+# file not in index
+for file in "$@"
+do
+    if test ! -f ".shrug/index/"$file""
+    then
+        echo "shrug-rm: error: '"$file"' is not in the shrug repository" >&2
+        exit 1
+    fi
+done
+
+# get last commit
+i=0
+commitdir=commit.$i
+while test -e ".shrug/$commitdir"
+do
+    i=$((i + 1))
+    commitdir=commit.$i
+done
+i=$((i - 1))
+lastcommit=commit.$i
+
+#################### KEY #######################
+# - & means files are the same between locations
+# - vs means files are different between locations
+# - index is the stage
+# - repo is the last commit
+# - cwd is the current working directory of file
+# note: each check firstly ensures files exist in respective locations, then computes diff
+
+# index vs cwd & repo
+# test if file in index diff to recent commit & forced isnt active
+# then check if file in index same as last commit
+for file in "$@"
+do
+    # check if file in recent commit and cwd
+    if test ! -f ".shrug/$lastcommit/"$file""
+    then
+        if test -f "./"$file""
+        then
+            # difference between index, cwd and repo
+            diff=$(diff ./"$file" .shrug/index/"$file")
+            if test "$diff" -a $force = 0
+            then
+                echo "shrug-rm: error: '"$file"' in index is different to both working file and repository" >&2
+                exit 1
+            fi
+
+            # if no difference, changes staged in index
+            if test "$force" = 0
+            then
+                if test "$cached" = 0
+                then
+                    echo "shrug-rm: error: '"$file"' has changes staged in the index" >&2
+                    exit 1
+                fi
+            fi
+        fi
+    fi
+done
+
+# index vs repo vs cwd
+# test if file in recent commit diff to index & force isnt actice
+# then check difference between index and cwd --> all 3 locations difference error
+for file in "$@"
+do
+    if test -f ".shrug/$lastcommit/"$file""
+    then
+        if test -f "./"$file""
+        then
+            # check if file in recent commit different to index
+            diff=$(diff .shrug/$lastcommit/"$file" ".shrug/index/"$file"")
+            if test "$diff" -a $force != "1"
+            then
+                diff=$(diff .shrug/index/"$file" "./"$file"")
+                if test "$diff" -a $force != "1"
+                then
+                    echo "shrug-rm: error: '"$file"' in index is different to both working file and repository" >&2
+                    exit 1 
+                fi
+            fi
+        fi
+    fi
+done
+
+# index & repo vs cwd
+# check if file in cwd different to last commit and index
+for file in "$@"
+do
+    if test -f ".shrug/$lastcommit/"$file""
+    then
+        if test -f "./"$file""
+        then
+            diff=$(diff .shrug/$lastcommit/"$file" ".shrug/index/"$file"")
+            if test -z "$diff" -a $force != "1"
+            then
+                diff=$(diff ".shrug/index/"$file"" ./"$file")
+                if test "$diff" -a $cached != 1
+                then
+                    echo "shrug-rm: error: '"$file"' in repository is different to working file" >&2
+                    exit 1
+                fi
+            fi
+        fi
+    fi
+done
+
+# cwd & index vs repo 
+# check if file in recent commit different to index
+for file in "$@"
+do
+    if test -f ".shrug/$lastcommit/"$file"" -a $force != 1
+    then
+        if test -f "./"$file""
+        then
+            diff=$(diff ./"$file" ".shrug/index/"$file"")
+            if test -z "$diff"
+            then
+                diff=$(diff ".shrug/index/"$file"" ".shrug/$lastcommit/"$file"")
+                if test "$diff" -a $cached != 1
+                then
+                    echo "shrug-rm: error: '"$file"' has changes staged in the index" >&2
+                    exit 1
+                fi
+            fi
+        fi
+    fi
+done
+
+################ REMOVAL #################
+# note: if the cwd different to the index, you can remove OK
+
+# remove file from index
+for file in "$@"
+do
+    rm ".shrug/index/"$file""
+done
+
+# remove file from cwd if cached != 1 (i.e. if --cached wasnt specified)
+if test $cached != 1
+then
+    for file in "$@"
+    do
+        rm "./"$file""
+    done
+fi
+
+exit 0
